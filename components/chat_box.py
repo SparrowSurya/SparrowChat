@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.font as tkfont
 
+import sys
 from functools import cached_property
 from typing import Dict, Any
 
@@ -97,9 +98,17 @@ class ChatBox(tk.Frame):
 
         self.frame.bind("<Configure>", lambda _: self.configure_frame())
         self._canvas.bind("<Configure>", lambda _: self.configure_canvas())
-        self._canvas.bind("<MouseWheel>", self._on_scroll)
 
-        self.bind_class("scroll-chat", "<MouseWheel>", self._on_scroll)
+        if sys.platform == "win32":
+            self._canvas.bind("<MouseWheel>", self._on_scroll)
+            self.bind_class("scroll-chat", "<MouseWheel>", self._on_scroll)
+        elif sys.platform == "linux":
+            self._canvas.bind("<Button-4>", self._on_scroll)
+            self._canvas.bind("<Button-5>", self._on_scroll)
+            self.bind_class("scroll-chat", "<Button-4>", self._on_scroll)  # scroll-up
+            self.bind_class("scroll-chat", "<Button-5>", self._on_scroll)  # scroll-down
+        else:
+            print("Chat Scroll is not supported for you system")
 
         self.listen_scroll(self.frame)
 
@@ -111,8 +120,23 @@ class ChatBox(tk.Frame):
     def configure_canvas(self):
         self._canvas.itemconfigure(self.frame_id, width=self._canvas.winfo_width())
 
-    def _on_scroll(self, e: tk.Event):
-        self._canvas.yview_scroll(-(e.delta // 120), "units")
+    if sys.platform == "win32":
+
+        def _on_scroll(self, e: tk.Event):
+            self._canvas.yview_scroll(-(e.delta // 120), "units")
+
+    elif sys.platform == "linux":
+
+        def _on_scroll(self, e: tk.Event):
+            if e.num == 4:
+                self._canvas.yview_scroll(-1, "units")
+            elif e.num == 5:
+                self._canvas.yview_scroll(1, "units")
+
+    else:
+
+        def _on_scroll(self, e: tk.Event):
+            pass
 
     def add_message(self, head: str, body: str):
         msg = MsgBox(self.frame)
