@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 
 class MsgHead(tk.Label):
-    style = {
+    style: Dict[str, Any] = {
         "foreground": "#ff66b7",
         "background": "#343145",
         "font": {
@@ -31,7 +31,7 @@ class MsgHead(tk.Label):
 
 
 class MsgBody(tk.Label):
-    style = {
+    style: Dict[str, Any] = {
         "foreground": "#d7d7da",
         "background": "#343145",
         "font": {
@@ -58,8 +58,32 @@ class MsgBody(tk.Label):
     def text_width(self) -> int:
         return self.style["font"].measure(self.cget("text"))
 
+    # NOTE: below method can cause infinite callbacks on window with no explicit geometry value
+    # Hence do provide geometry to the window
     def configure_wrap(self):
         self.config(wraplength=self.master.winfo_width())
+
+
+class Notification(tk.Label):
+    style: Dict[str, Any] = {
+        "foreground": "#656881",
+        "background": "#343145",
+        "font": {
+            "family": "Roboto",
+            "size": 14,
+            "weight": "normal",
+        },
+        "justify": "center",
+        "anchor": "center",
+    }
+
+    def __init__(self, master: tk.Misc, text: str):
+        font_dict = self.style.pop("font")
+        self.style["font"] = (
+            tkfont.Font(**font_dict) if isinstance(font_dict, dict) else font_dict
+        )
+
+        super().__init__(master, **self.style, text=text)
 
 
 class MsgBox(tk.Frame):
@@ -139,17 +163,34 @@ class ChatBox(tk.Frame):
             pass
 
     def add_message(self, head: str, body: str):
-        msg = MsgBox(self.frame)
-        msg.pack(fill=tk.X, padx=5, pady=5)
+        box = MsgBox(self.frame)
+        box.pack(fill=tk.X, padx=2, pady=5)
 
-        title = MsgHead(msg, head)
+        title = MsgHead(box, head)
         title.pack(fill=tk.X, anchor=tk.NW)
 
-        content = MsgBody(msg, body)
+        content = MsgBody(box, body)
         content.pack(fill=tk.X, anchor=tk.SW)
 
-        self.listen_scroll(msg, title, content)
-        self.update_idletasks()
+        self.listen_scroll(box, title, content)
+
+        # NOTE: below call might result in infinite loop of callbacks
+        # see MsgBody.configure_wrap
+        self.frame.update_idletasks()
+        self._canvas.yview_moveto(1)
+
+    def add_notification(self, msg: str):
+        box = MsgBox(self.frame)
+        box.pack(fill=tk.X, padx=2, pady=5)
+
+        notifi = Notification(box, msg)
+        notifi.pack(expand=tk.TRUE, padx=10, pady=3, anchor=tk.CENTER)
+
+        self.listen_scroll(box, notifi)
+
+        # NOTE: below call might result in infinite loop of callbacks
+        # see MsgBody.configure_wrap
+        self.frame.update_idletasks()
         self._canvas.yview_moveto(1)
 
     def listen_scroll(self, *widgets: tk.Widget):
@@ -183,12 +224,16 @@ msgs = (
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.geometry("300x400+30+30")
     root.config(bg="#252331", padx=6, pady=6)
 
     chat = ChatBox(root)
     chat.pack(fill=tk.BOTH, padx=3, pady=3, expand=tk.TRUE)
 
     for user, msg in msgs:
+        print(user)
         chat.add_message(user, msg)
+        if user == "Poco":
+            chat.add_notification("Nita joined the chat")
 
     root.mainloop()

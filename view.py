@@ -52,6 +52,7 @@ class ChatView(tk.Tk):
         msg = self.inputmsg.get("1.0", "end").strip()
         if msg:
             self.chatbox.add_message("Sparrow", msg)
+            self.chatbox.add_notification("You are alone in chat")
             self.inputmsg.delete("1.0", "end")
             self.inputmsg.configure_height()
 
